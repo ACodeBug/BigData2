@@ -1,0 +1,2 @@
+Datetime (UTC),Country,Zone Name,Zone Id,Carbon Intensity gCO₂eq/kWh (direct),Carbon Intensity gCO₂eq/kWh (LCA),Low Carbon Percentage,Renewable Percentage,Data Source
+2024-01-01 00:00:00,France,France,FR,18.46,33.45,95.95,28.48,entsoe.eu; opendata.reseaux-energies.fr; Electricity Maps Estimation
