@@ -1,0 +1,96 @@
+
+<!DOCTYPE html>
+<html lang="de">
+<head>
+  <meta charset="UTF-8">
+  <title>Dot Plot CO₂-Intensität</title>
+  <script src="https://d3js.org/d3.v7.min.js"></script>
+  <style>
+    body { font-family: sans-serif; }
+    .dot { opacity: 0.3; }
+    .dot.highlight { fill: steelblue; opacity: 1; }
+    .axis-label { font-size: 14px; }
+  </style>
+</head>
+<body>
+  <h2>CO₂-Intensität (täglich) mit Jahresfilter</h2>
+  <label for="year-select">Jahr: </label>
+  <select id="year-select">
+    <option>2021</option>
+    <option selected>2022</option>
+    <option>2023</option>
+    <option>2024</option>
+  </select>
+
+  <svg width="900" height="450"></svg>
+
+  <script>
+    const margin = {top: 30, right: 30, bottom: 50, left: 60};
+    const width = 900 - margin.left - margin.right;
+    const height = 450 - margin.top - margin.bottom;
+    const svg = d3.select("svg")
+      .append("g")
+      .attr("transform", `translate(${margin.left},${margin.top})`);
+
+    // Lade mehrere CSV-Dateien (vereinfacht als eine zusammengefügte Datei)
+    d3.csv("DE_daily_combined.csv").then(data => {
+      data.forEach(d => {
+        d.date = new Date(d["Datetime (UTC)"]);
+        d.year = d.date.getFullYear();
+        d.dayOfYear = d3.timeFormat("%j")(d.date);  // Tag im Jahr
+        d.intensity = +d["Carbon Intensity gCO₂eq/kWh (direct)"];
+      });
+
+      const x = d3.scaleLinear()
+        .domain([1, 366])
+        .range([0, width]);
+
+      const y = d3.scaleLinear()
+        .domain(d3.extent(data, d => d.intensity)).nice()
+        .range([height, 0]);
+
+      const xAxis = d3.axisBottom(x).ticks(12).tickFormat(d => `Tag ${d}`);
+      const yAxis = d3.axisLeft(y);
+
+      svg.append("g")
+        .attr("transform", `translate(0,${height})`)
+        .call(xAxis)
+        .append("text")
+        .attr("x", width / 2)
+        .attr("y", 40)
+        .attr("fill", "black")
+        .attr("text-anchor", "middle")
+        .text("Tag im Jahr");
+
+      svg.append("g")
+        .call(yAxis)
+        .append("text")
+        .attr("x", -height / 2)
+        .attr("y", -45)
+        .attr("transform", "rotate(-90)")
+        .attr("text-anchor", "middle")
+        .attr("fill", "black")
+        .text("CO₂-Intensität (gCO₂/kWh)");
+
+      const dots = svg.selectAll("circle")
+        .data(data)
+        .join("circle")
+        .attr("class", "dot")
+        .attr("cx", d => x(+d.dayOfYear))
+        .attr("cy", d => y(d.intensity))
+        .attr("r", 3)
+        .attr("fill", "gray");
+
+      function updateDots(selectedYear) {
+        dots.classed("highlight", d => d.year == selectedYear);
+      }
+
+      d3.select("#year-select").on("change", function () {
+        updateDots(this.value);
+      });
+
+      updateDots("2022");  // Initialwert
+    });
+  </script>
+</body>
+</html>
