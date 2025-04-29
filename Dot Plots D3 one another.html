@@ -1,0 +1,102 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+  <meta charset="UTF-8">
+  <title>Monatliche CO₂-Intensität</title>
+  <script src="https://d3js.org/d3.v7.min.js"></script>
+  <style>
+    body { font-family: sans-serif; }
+    .dot { opacity: 0.3; }
+    .dot.highlight { opacity: 1; }
+    .axis-label { font-size: 14px; }
+  </style>
+</head>
+<body>
+  <h2>Monatliche CO₂-Intensität mit Jahresfilter</h2>
+  <label for="year-select">Jahr: </label>
+  <select id="year-select">
+    <option>2021</option>
+    <option>2022</option>
+    <option>2023</option>
+    <option selected>2024</option>
+  </select>
+
+  <svg width="900" height="450"></svg>
+
+  <script>
+    const margin = {top: 30, right: 30, bottom: 50, left: 60};
+    const width = 900 - margin.left - margin.right;
+    const height = 450 - margin.top - margin.bottom;
+
+    const svg = d3.select("svg")
+      .append("g")
+      .attr("transform", `translate(${margin.left},${margin.top})`);
+
+    const monthNames = ["Jan", "Feb", "Mär", "Apr", "Mai", "Jun", "Jul", "Aug", "Sep", "Okt", "Nov", "Dez"];
+    const monthScale = d3.scalePoint()
+      .domain(monthNames)
+      .range([0, width])
+      .padding(0.5);
+
+    d3.csv("DE_monthly_combined.csv").then(data => {
+      console.log(data);
+      data.forEach(d => {
+        d.date = new Date(d["Date"]);
+        d.year = d.date.getFullYear();
+        d.month = d.date.toLocaleString("de-DE", { month: "short" });
+        d.intensity = +d["Carbon_Intensity"];
+        d.renewable = +d["Renewable_Percentage"];
+      });
+
+      const y = d3.scaleLinear()
+        .domain(d3.extent(data, d => d.intensity)).nice()
+        .range([height, 0]);
+
+      const color = d3.scaleSequential(d3.interpolateViridis)
+        .domain(d3.extent(data, d => d.renewable));
+
+      const xAxis = d3.axisBottom(monthScale);
+      const yAxis = d3.axisLeft(y);
+
+      svg.append("g")
+        .attr("transform", `translate(0,${height})`)
+        .call(xAxis)
+        .append("text")
+        .attr("x", width / 2)
+        .attr("y", 40)
+        .attr("fill", "black")
+        .attr("text-anchor", "middle")
+        .text("Monat");
+
+      svg.append("g")
+        .call(yAxis)
+        .append("text")
+        .attr("x", -height / 2)
+        .attr("y", -45)
+        .attr("transform", "rotate(-90)")
+        .attr("text-anchor", "middle")
+        .attr("fill", "black")
+        .text("CO₂-Intensität (gCO₂/kWh)");
+
+      const dots = svg.selectAll("circle")
+        .data(data)
+        .join("circle")
+        .attr("class", "dot")
+        .attr("cx", d => monthScale(d.month))
+        .attr("cy", d => y(d.intensity))
+        .attr("r", 6)
+        .attr("fill", d => color(d.renewable));
+
+      function updateDots(selectedYear) {
+        dots.classed("highlight", d => d.year == selectedYear);
+      }
+
+      d3.select("#year-select").on("change", function () {
+        updateDots(this.value);
+      });
+
+      updateDots("2024");  // Anfangswert
+    });
+  </script>
+</body>
+</html>
